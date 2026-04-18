@@ -48,22 +48,37 @@
       },
       "gpx_file": "tracks/fenghuangjingHK.gpx",
 
-      "cover_photo": "photos/fenghuangjingHK/cover.jpg",
+      "cover_photo": "photos/fenghuangjingHK/19.jpg",
 
       "photos": [
         {
-          "file": "photos/fenghuangjingHK/01_red_leaves.jpg",
-          "caption": "红叶与城墙",
+          "file": "photos/fenghuangjingHK/02.jpg",
+          "caption": "渡轮上看维多利亚港",
           "is_highlight": true
         },
         {
-          "file": "photos/fenghuangjingHK/02_beacon_tower.jpg",
-          "caption": "烽火台远眺",
+          "file": "photos/fenghuangjingHK/02.jpg",
+          "caption": "梅窝码头",
           "is_highlight": false
         },
         {
-          "file": "photos/fenghuangjingHK/03_sunset.jpg",
-          "caption": "夕阳回程",
+          "file": "photos/fenghuangjingHK/11.jpg",
+          "caption": "村庄指示牌",
+          "is_highlight": false
+        },
+        {
+          "file": "photos/fenghuangjingHK/23.jpg",
+          "caption": "L136路牌",
+          "is_highlight": false
+        },
+        {
+          "file": "photos/fenghuangjingHK/24.jpg",
+          "caption": "中环路牌",
+          "is_highlight": true
+        },
+        {
+          "file": "photos/fenghuangjingHK/09.jpg",
+          "caption": "大东山顶",
           "is_highlight": false
         }
       ],
