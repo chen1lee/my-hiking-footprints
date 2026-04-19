@@ -6,7 +6,7 @@
     <title>我的徒步足迹 - 保持探索世界的心</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-    <!-- Mapbox GL JS：替换 Leaflet，承担弹窗内全部地图渲染 -->
+    <!-- Mapbox GL JS：保留，用于渲染 2D 极简自定义地图 -->
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.css" rel="stylesheet">
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.js"></script>
 
@@ -210,7 +210,6 @@
             position: relative; width: 100%; height: 520px;
             border-radius: 20px; overflow: hidden;
             border: 1px solid var(--border-glow);
-            /* 初始透明，加载完成后淡入 */
             opacity: 0; transition: opacity 0.8s ease;
         }
         #mapbox-map-container.ready { opacity: 1; }
@@ -335,7 +334,7 @@
     const MAPBOX_STYLE   = 'mapbox://styles/shaunkuang11/cmo59gkst006101se5carfghs';
 
     /* ================================================================
-       转场动画序列（原设定不变）
+       转场动画序列
     ================================================================ */
     document.getElementById('explore-btn').addEventListener('click', function() {
         const btn             = this;
@@ -411,7 +410,7 @@
     }
 
     /* ================================================================
-       ECharts GL 3D 地形引擎（原设定不变）
+       ECharts GL 3D 地形引擎
     ================================================================ */
     function render3DMap() {
         const container = document.getElementById('china-3d-map');
@@ -453,7 +452,7 @@
     }
 
     /* ================================================================
-       星环卡片渲染（原设定不变）
+       星环卡片渲染
     ================================================================ */
     function renderCards() {
         const orbit = document.getElementById('trips-grid');
@@ -508,8 +507,7 @@
     }
 
     /* ================================================================
-       GPX 解析（纯浏览器，无需 leaflet-gpx）
-       返回 [[lng, lat], ...] — Mapbox / GeoJSON 标准顺序
+       GPX 解析
     ================================================================ */
     function parseGPX(gpxText) {
         try {
@@ -520,7 +518,6 @@
                     .map(pt => [parseFloat(pt.getAttribute('lon')), parseFloat(pt.getAttribute('lat'))])
                     .filter(c => !isNaN(c[0]) && !isNaN(c[1]));
             }
-            /* 兼容 wpt 格式 */
             return Array.from(doc.querySelectorAll('wpt'))
                 .map(pt => [parseFloat(pt.getAttribute('lon')), parseFloat(pt.getAttribute('lat'))])
                 .filter(c => !isNaN(c[0]) && !isNaN(c[1]));
@@ -543,16 +540,7 @@
     }
 
     /* ================================================================
-       Mapbox 初始化
-
-       时序：
-         T+0      创建地图实例（自定义暗色 Style）
-         T+load   添加 DEM 地形 + Sky 大气层
-                  flyTo 俯冲至目的地（pitch 58°）
-         T+moveend 地形稳定后：
-                    有 GPX → 解析 → addAnimatedTrack
-                    无 GPX → addCenterMarker
-         整个过程中遮罩层遮住加载中状态，地图就绪后淡入
+       Mapbox 初始化 (修改为纯 2D 极速渲染模式)
     ================================================================ */
     function initMapboxMap(trip) {
         const mapContainer = document.getElementById('mapbox-map-container');
@@ -567,42 +555,29 @@
             style:      MAPBOX_STYLE,
             center:     center,
             zoom:       8,
-            pitch:      0,
-            bearing:    0,
-            antialias:  true
+            pitch:      0,   // 严格锁定 2D
+            bearing:    0,   // 严格锁定 2D
+            antialias:  false // 关闭抗锯齿，大幅提升移动端性能
         });
 
-        map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), 'top-right');
+        // 仅保留 2D 的缩放控制，禁用倾斜控制
+        map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
 
         map.on('load', () => {
-            /* 1. 数字高程模型 */
-            map.addSource('mapbox-dem', {
-                type: 'raster-dem',
-                url:  'mapbox://mapbox.mapbox-terrain-dem-v1',
-                tileSize: 512, maxzoom: 14
-            });
-            map.setTerrain({ source: 'mapbox-dem', exaggeration: 1.8 });
-
-            /* 2. 大气层 / 星空背景 */
-            map.addLayer({
-                id: 'sky', type: 'sky',
-                paint: {
-                    'sky-type':                    'atmosphere',
-                    'sky-atmosphere-sun':          [0.0, 90.0],
-                    'sky-atmosphere-sun-intensity': 5,
-                    'sky-atmosphere-color':        'rgb(5,12,30)',
-                    'sky-atmosphere-halo-color':   'rgba(143,164,134,0.2)'
-                }
-            });
-
-            /* 3. 电影级 flyTo */
+            /* 1. 【移除 3D 渲染】删除 DEM 地形和 Sky 层，以保证手机端极致流畅 */
+            
+            /* 2. 纯平面的 2D 镜头拉近 */
             map.flyTo({
-                center: center, zoom: 12.5, pitch: 58, bearing: -25, duration: 3200,
+                center: center, 
+                zoom: 12.5, 
+                pitch: 0,    // 保持 2D
+                bearing: 0,  // 保持 2D
+                duration: 2500,
                 essential: true,
                 easing: t => t < 0.5 ? 2*t*t : -1+(4-2*t)*t
             });
 
-            /* 4. 飞行结束后加载轨迹 */
+            /* 3. 飞行结束后加载动态轨迹 */
             map.once('moveend', () => {
                 if (trip.gpx_file) {
                     fetch(trip.gpx_file)
@@ -629,29 +604,19 @@
     }
 
     /* ================================================================
-       动态生长轨迹动画
-
-       图层结构（底→顶）：
-         route-glow     宽幅光晕，模糊，莫兰迪绿半透明
-         route-line     主轨迹线，莫兰迪绿
-         route-head-dot 轨迹生长前端的高亮圆点，动画结束后淡出
-
-       动画原理：
-         基于 requestAnimationFrame + 时间戳驱动，
-         根据已用时间计算应推进到的坐标索引，
-         避免低帧率设备下动画过慢。总时长约 2.5s。
+       动态生长轨迹动画 (2D 极简版)
     ================================================================ */
     function addAnimatedTrack(map, coords, mapContainer, loadingEl) {
         revealMap(mapContainer, loadingEl);
 
-        /* 调整镜头至轨迹全貌 */
+        /* 调整镜头至轨迹全貌 (锁定 2D 视角) */
         const meta = getCoordsMeta(coords);
         if (meta) {
             const z = Math.max(9, Math.min(14, Math.round(14 - meta.span * 120)));
-            map.easeTo({ center: meta.center, zoom: z, pitch: 55, bearing: -18, duration: 1200 });
+            map.easeTo({ center: meta.center, zoom: z, pitch: 0, bearing: 0, duration: 1200 });
         }
 
-        /* GeoJSON 数据源（初始空） */
+        /* GeoJSON 数据源 */
         map.addSource('route', {
             type: 'geojson', lineMetrics: true,
             data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } }
@@ -685,7 +650,7 @@
             }
         });
 
-        /* 起点 & 终点 marker */
+        /* 起点 & 终点 */
         new mapboxgl.Marker({ color: '#8fa486', scale: 0.9 })
             .setLngLat(coords[0])
             .setPopup(new mapboxgl.Popup({ offset: 20 })
@@ -717,13 +682,11 @@
             if (progress < 1) {
                 requestAnimationFrame(drawFrame);
             } else {
-                /* 动画完成：高亮点淡出 */
                 map.setPaintProperty('route-head-dot', 'circle-opacity', 0);
                 map.setPaintProperty('route-head-dot', 'circle-stroke-opacity', 0);
             }
         }
 
-        /* 等镜头平稳后再开始绘制 */
         setTimeout(() => requestAnimationFrame(drawFrame), 900);
     }
 
@@ -748,10 +711,6 @@
         const body  = document.getElementById('modal-detail-body');
         const modal = document.getElementById('trip-modal');
 
-        /*
-         * 销毁 ECharts WebGL 上下文
-         * 在移动端避免两个 WebGL 实例并存导致其中一个崩溃
-         */
         if (echartMap) { echartMap.dispose(); echartMap = null; }
 
         const photoGalleryHtml = trip.photos.map(p => `
@@ -795,16 +754,16 @@
 
             <div>
                 <h3 style="border-left:4px solid var(--primary-green);padding-left:12px;margin-bottom:15px;font-weight:500;">
-                    3D 路线足迹
+                    2D 路线足迹
                     <span style="font-size:0.72rem;font-weight:400;color:var(--text-muted);letter-spacing:1.5px;margin-left:12px;">
-                        真实地形 · 电影镜头 · 轨迹动态生长
+                        极简平面 · 轨迹动态生长
                     </span>
                 </h3>
                 <div id="mapbox-map-container">
                     <div id="real-map"></div>
                     <div id="map-loading-overlay">
                         <div class="loading-pulse"></div>
-                        <p>正在渲染 3D 地形</p>
+                        <p>正在渲染极简地图</p>
                     </div>
                 </div>
             </div>`;
@@ -814,13 +773,9 @@
         setTimeout(() => modal.classList.add('show'), 10);
 
         if (mapboxInstance) { mapboxInstance.remove(); mapboxInstance = null; }
-        /* 350ms 延迟：等弹窗 CSS 过渡完成，确保容器尺寸可测量 */
         setTimeout(() => { mapboxInstance = initMapboxMap(trip); }, 350);
     }
 
-    /* ================================================================
-       关闭弹窗：销毁 Mapbox → 重建 ECharts
-    ================================================================ */
     function closeModal() {
         const modal = document.getElementById('trip-modal');
         modal.classList.remove('show');
@@ -828,7 +783,6 @@
         setTimeout(() => {
             modal.style.display = "none";
             document.body.style.overflow = "auto";
-            /* 重建 ECharts（仅在用户已完成转场、且 GeoJSON 就绪时） */
             if (echartWasActive && mapGeoReady) { render3DMap(); }
         }, 300);
     }
