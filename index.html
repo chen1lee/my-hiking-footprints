@@ -6,18 +6,20 @@
     <title>我的徒步足迹 - 保持探索世界的心</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-    <!-- Mapbox GL JS：保留，用于渲染 2D 极简自定义地图 -->
-    <link href="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.css" rel="stylesheet">
-    <script src="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.js"></script>
+    <!-- 回归经典：Leaflet 与 Leaflet-GPX 插件，极致轻量，秒级加载 -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js"></script>
 
-    <!-- ECharts GL：保留，负责宏观 3D 中国板块 -->
+    <!-- ECharts GL：负责宏观 3D 中国板块渲染 -->
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js"></script>
 
     <style>
-        /* ===== 核心变量 ===== */
+        /* ===== 核心变量 (极简莫兰迪暗黑) ===== */
         :root {
             --primary-green: #8fa486;
+            --neon-green: #4ade80;
             --bg-space: #030712;
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
@@ -39,81 +41,50 @@
 
         /* ================= 第一部分：太空探索起始页 ================= */
         #intro-screen {
-            position: fixed; inset: 0; z-index: 9999; display: flex; justify-content: center;
-            background-color: #000; overflow: hidden;
+            position: fixed; inset: 0; z-index: 9999; display: flex; justify-content: center; background-color: #000; overflow: hidden;
         }
         .intro-bg {
-            position: absolute; inset: 0;
-            background-image: url('photos/intro-bg.jpg');
-            background-size: cover; background-position: center;
-            transform-origin: 75% 55%;
-            transition: transform 3.5s cubic-bezier(0.64, 0, 0.2, 1), filter 3s ease;
+            position: absolute; inset: 0; background-image: url('photos/intro-bg.jpg'); background-size: cover; background-position: center;
+            transform-origin: 75% 55%; transition: transform 3.5s cubic-bezier(0.64, 0, 0.2, 1), filter 3s ease;
         }
-        .zoom-into-asia {
-            transform: scale(25) translate(-5%, 5%);
-            filter: blur(8px) brightness(1.5);
-        }
-        .intro-overlay {
-            position: absolute; inset: 0;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.8) 100%);
-            transition: opacity 1s ease;
-        }
+        .zoom-into-asia { transform: scale(25) translate(-5%, 5%); filter: blur(8px) brightness(1.5); }
+        .intro-overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.8) 100%); transition: opacity 1s ease; }
         .explore-btn {
-            position: absolute; top: 33vh; z-index: 10000;
-            background: rgba(255,255,255,0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-            border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 16px 32px;
-            border-radius: 50px; font-size: 1.1rem; letter-spacing: 3px; cursor: pointer;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5); transition: all 0.3s ease;
-            animation: pulse-glow 2.5s infinite;
+            position: absolute; top: 33vh; z-index: 10000; background: rgba(255,255,255,0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 16px 32px; border-radius: 50px; font-size: 1.1rem; letter-spacing: 3px; cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5); transition: all 0.3s ease; animation: pulse-glow 2.5s infinite;
         }
         .explore-btn:active { transform: scale(0.95); }
-        @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 10px rgba(255,255,255,0.2); }
-            50%       { box-shadow: 0 0 25px rgba(255,255,255,0.6); }
-        }
+        @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 10px rgba(255,255,255,0.2); } 50% { box-shadow: 0 0 25px rgba(255,255,255,0.6); } }
         .fade-out { opacity: 0 !important; pointer-events: none; }
 
         #cloud-transition {
             position: fixed; inset: 0; z-index: 10005; pointer-events: none;
             background: radial-gradient(circle at center, rgba(240,248,255,1) 0%, rgba(143,164,134,0.5) 60%, rgba(0,0,0,0) 100%);
-            opacity: 0; transform: scale(0.2);
-            transition: opacity 1s ease-in, transform 1.5s ease-in;
+            opacity: 0; transform: scale(0.2); transition: opacity 1s ease-in, transform 1.5s ease-in;
         }
         #cloud-transition.enter-clouds { opacity: 1; transform: scale(2); }
-        #cloud-transition.leave-clouds {
-            opacity: 0; transform: scale(5);
-            transition: opacity 2s ease-out, transform 2s ease-out;
-        }
+        #cloud-transition.leave-clouds { opacity: 0; transform: scale(5); transition: opacity 2s ease-out, transform 2s ease-out; }
 
         /* ================= 第二部分：主页面 ================= */
         #main-wrapper {
-            opacity: 0; transform: translateY(30px);
-            transition: opacity 2s ease-out, transform 2s cubic-bezier(0.2, 0.8, 0.2, 1);
+            opacity: 0; transform: translateY(30px); transition: opacity 2s ease-out, transform 2s cubic-bezier(0.2, 0.8, 0.2, 1);
             pointer-events: none; min-height: 100vh;
         }
         #main-wrapper.active { opacity: 1; transform: translateY(0); pointer-events: auto; }
 
         #hologram-section {
-            position: relative; width: 100%; height: 520px;
-            display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-            overflow: hidden; padding-top: 2rem;
-            background: linear-gradient(180deg, transparent 0%, rgba(3,7,18,0.95) 85%, rgba(3,7,18,1) 100%);
+            position: relative; width: 100%; height: 520px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+            overflow: hidden; padding-top: 2rem; background: linear-gradient(180deg, transparent 0%, rgba(3,7,18,0.95) 85%, rgba(3,7,18,1) 100%);
+            transition: opacity 0.5s ease, visibility 0.5s ease;
         }
         header { position: relative; z-index: 10; text-align: center; }
-        header h1 {
-            margin: 0; color: var(--primary-green); letter-spacing: 2px;
-            text-shadow: 0 0 20px rgba(143,164,134,0.3); line-height: 1.5; font-size: 1.8rem;
-        }
-        .map-3d-container {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
-        }
+        header h1 { margin: 0; color: var(--primary-green); letter-spacing: 2px; text-shadow: 0 0 20px rgba(143,164,134,0.3); line-height: 1.5; font-size: 1.8rem; }
+        .map-3d-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         #china-3d-map { width: 100%; height: 100%; }
 
-        /* 统计区 */
         .stats-banner {
-            display: flex; justify-content: center; gap: 4rem; padding: 1rem 2rem 2rem;
-            border-bottom: 1px solid var(--border-glow); margin-bottom: 0;
-            position: relative; z-index: 10;
+            display: flex; justify-content: center; gap: 4rem; padding: 1rem 2rem 2rem; border-bottom: 1px solid var(--border-glow); margin-bottom: 0; position: relative; z-index: 10;
         }
         .stat-item { text-align: center; }
         .stat-item h3 { margin: 0; color: var(--text-main); font-size: 2.2rem; font-weight: 300; }
@@ -121,57 +92,33 @@
 
         /* ================= 星环卡片区 ================= */
         #ring-scene {
-            position: relative; width: 100%; height: 660px;
-            perspective: 1200px; perspective-origin: 50% 38%;
-            overflow: visible; margin: 0 auto; z-index: 10;
+            position: relative; width: 100%; height: 660px; perspective: 1200px; perspective-origin: 50% 38%; overflow: visible; margin: 0 auto; z-index: 10;
         }
         #trips-grid {
-            position: absolute; width: 0; height: 0;
-            top: 52%; left: 50%;
-            transform-style: preserve-3d;
-            transform: rotateX(-18deg) rotateY(0deg);
-            animation: ring-spin 90s linear infinite;
-            animation-play-state: paused;
+            position: absolute; width: 0; height: 0; top: 52%; left: 50%; transform-style: preserve-3d;
+            transform: rotateX(-18deg) rotateY(0deg); animation: ring-spin 90s linear infinite; animation-play-state: paused;
         }
         #trips-grid.spinning { animation-play-state: running; }
         #ring-scene:hover #trips-grid.spinning { animation-play-state: paused; }
-        @keyframes ring-spin {
-            from { transform: rotateX(-18deg) rotateY(0deg); }
-            to   { transform: rotateX(-18deg) rotateY(360deg); }
-        }
+        @keyframes ring-spin { from { transform: rotateX(-18deg) rotateY(0deg); } to { transform: rotateX(-18deg) rotateY(360deg); } }
+        
         .ring-card {
-            position: absolute; width: 272px;
-            margin-left: -136px; margin-top: -170px;
-            transform-style: preserve-3d;
-            backface-visibility: hidden; -webkit-backface-visibility: hidden;
-            will-change: transform;
-            background: var(--card-glass); border: 1px solid var(--border-glow);
-            border-radius: 16px; overflow: hidden;
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            cursor: pointer;
-            transition: border-color 0.35s ease, box-shadow 0.35s ease;
+            position: absolute; width: 272px; margin-left: -136px; margin-top: -170px; transform-style: preserve-3d;
+            backface-visibility: hidden; -webkit-backface-visibility: hidden; will-change: transform;
+            background: var(--card-glass); border: 1px solid var(--border-glow); border-radius: 16px; overflow: hidden;
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); cursor: pointer; transition: border-color 0.35s ease, box-shadow 0.35s ease;
         }
         .ring-card:hover {
-            border-color: rgba(143,164,134,0.5);
-            box-shadow: 0 0 0 1px rgba(143,164,134,0.2),
-                        0 0 30px rgba(143,164,134,0.18),
-                        0 20px 60px rgba(0,0,0,0.8);
+            border-color: rgba(143,164,134,0.5); box-shadow: 0 0 0 1px rgba(143,164,134,0.2), 0 0 30px rgba(143,164,134,0.18), 0 20px 60px rgba(0,0,0,0.8);
         }
-        .ring-card .trip-image { width: 100%; height: 172px; object-fit: cover; display: block; }
+        .ring-card .trip-image { width: 100%; height: 172px; object-fit: cover; display: block; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .ring-card .trip-content { padding: 1rem 1.2rem 1.2rem; }
-        .ring-card .trip-title {
-            margin: 0 0 0.4rem; font-size: 1.05rem; color: var(--text-main); font-weight: 600;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
+        .ring-card .trip-title { margin: 0 0 0.4rem; font-size: 1.05rem; color: var(--text-main); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .ring-card .trip-meta { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.9rem; letter-spacing: 0.8px; }
-        .ring-card .trip-stats {
-            display: flex; justify-content: space-between;
-            border-top: 1px solid var(--border-glow); padding-top: 0.75rem;
-            font-size: 0.8rem; color: var(--primary-green);
-        }
+        .ring-card .trip-stats { display: flex; justify-content: space-between; border-top: 1px solid var(--border-glow); padding-top: 0.75rem; font-size: 0.8rem; color: var(--primary-green); }
+        
         #ring-hint {
-            position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
-            font-size: 0.78rem; color: var(--text-muted); letter-spacing: 1.5px;
+            position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); font-size: 0.78rem; color: var(--text-muted); letter-spacing: 1.5px;
             opacity: 0; transition: opacity 1s ease 1s; pointer-events: none; white-space: nowrap;
         }
         #ring-hint.visible { opacity: 1; }
@@ -179,83 +126,33 @@
 
         /* ================= 弹窗 ================= */
         .modal {
-            display: none; position: fixed; z-index: 10000; left: 0; top: 0;
-            width: 100%; height: 100%; background-color: rgba(0,0,0,0.92); overflow-y: auto;
+            display: none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.92); overflow-y: auto;
             backdrop-filter: blur(10px); opacity: 0; transition: opacity 0.3s ease;
         }
         .modal.show { opacity: 1; }
         .modal-content {
-            background-color: #090f1e; margin: 4% auto; padding: 3rem;
-            width: 90%; max-width: 900px; border-radius: 24px; position: relative;
-            border: 1px solid rgba(255,255,255,0.08);
-            transform: translateY(20px); transition: transform 0.3s ease;
+            background-color: #090f1e; margin: 4% auto; padding: 3rem; width: 90%; max-width: 900px; border-radius: 24px; position: relative;
+            border: 1px solid rgba(255,255,255,0.08); transform: translateY(20px); transition: transform 0.3s ease;
         }
         .modal.show .modal-content { transform: translateY(0); }
-        .close-btn {
-            position: absolute; right: 30px; top: 20px;
-            font-size: 2.5rem; cursor: pointer; color: var(--text-muted);
-        }
+        .close-btn { position: absolute; right: 30px; top: 20px; font-size: 2.5rem; cursor: pointer; color: var(--text-muted); z-index: 100;}
         .close-btn:hover { color: #fff; }
-        .photo-gallery {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 15px; margin-top: 1rem;
-        }
-        .gallery-img {
-            width: 100%; height: 160px; object-fit: cover;
-            border-radius: 12px; border: 1px solid var(--border-glow);
-        }
+        .photo-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; margin-top: 1rem; }
+        .gallery-img { width: 100%; height: 160px; object-fit: cover; border-radius: 12px; border: 1px solid var(--border-glow); }
 
-        /* ===== Mapbox 地图容器 ===== */
-        #mapbox-map-container {
-            position: relative; width: 100%; height: 520px;
-            border-radius: 20px; overflow: hidden;
-            border: 1px solid var(--border-glow);
-            opacity: 0; transition: opacity 0.8s ease;
+        /* ===== Leaflet 极简暗黑改造 ===== */
+        .leaflet-container {
+            width: 100%; height: 500px; border-radius: 16px; border: 1px solid var(--border-glow); z-index: 1;
+            background: #030712 !important; /* 防止加载时的白底闪烁 */
         }
-        #mapbox-map-container.ready { opacity: 1; }
-        #real-map { width: 100%; height: 100%; }
-
-        /* 加载遮罩 */
-        #map-loading-overlay {
-            position: absolute; inset: 0;
-            display: flex; flex-direction: column;
-            align-items: center; justify-content: center;
-            background: rgba(9,15,30,0.88);
-            border-radius: 20px; z-index: 5;
-            transition: opacity 0.6s ease;
+        /* 神奇滤镜：将高德默认地图转换为极具科技感的高对比暗黑地图 */
+        .leaflet-tile-pane {
+            filter: invert(100%) hue-rotate(180deg) brightness(0.85) contrast(1.1) grayscale(0.2);
+            transition: filter 0.5s ease;
         }
-        #map-loading-overlay.hidden { opacity: 0; pointer-events: none; }
-        .loading-pulse {
-            width: 48px; height: 48px; border-radius: 50%;
-            border: 2px solid rgba(143,164,134,0.15);
-            border-top-color: var(--primary-green);
-            animation: spin 1s linear infinite; margin-bottom: 1rem;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        #map-loading-overlay p {
-            margin: 0; font-size: 0.82rem; letter-spacing: 2px; color: var(--text-muted);
-        }
-
-        /* Mapbox UI 覆写 */
-        .mapboxgl-ctrl-logo,
-        .mapboxgl-ctrl-attrib { display: none !important; }
-        .mapboxgl-ctrl-group {
-            background: rgba(9,15,30,0.82) !important;
-            border: 1px solid var(--border-glow) !important;
-            box-shadow: none !important;
-        }
-        .mapboxgl-ctrl-group button { filter: invert(1) brightness(0.55); }
-        .mapboxgl-popup-content {
-            background: rgba(9,15,30,0.92) !important;
-            color: var(--text-muted) !important;
-            border: 1px solid var(--border-glow) !important;
-            border-radius: 8px !important;
-            padding: 8px 14px !important;
-            font-size: 0.82rem !important;
-            letter-spacing: 1px !important;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
-        }
-        .mapboxgl-popup-tip { display: none !important; }
+        .leaflet-control-attribution { display: none !important; } /* 隐藏下方版权，保持极简 */
+        .leaflet-popup-content-wrapper { background: rgba(9,15,30,0.92); color: var(--primary-green); border: 1px solid var(--border-glow); border-radius: 8px; }
+        .leaflet-popup-tip { border-top-color: rgba(9,15,30,0.92); }
 
         /* ================= 手机端适配 ================= */
         @media (max-width: 768px) {
@@ -270,7 +167,7 @@
             .close-btn { right: 20px; top: 15px; }
             #modal-detail-body > div:nth-child(2) { grid-template-columns: 1fr 1fr !important; gap: 12px !important; }
             .photo-gallery { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
-            #mapbox-map-container { height: 380px; }
+            .leaflet-container { height: 350px; }
         }
     </style>
 </head>
@@ -287,9 +184,7 @@
     <div id="main-wrapper">
         <div id="hologram-section">
             <header>
-                <h1>
-                    <i class="fas fa-satellite"></i> 爱并非存在于相互的凝视<br>而是两个人一起望向外在的同一方向
-                </h1>
+                <h1><i class="fas fa-satellite"></i> 爱并非存在于相互的凝视<br>而是两个人一起望向外在的同一方向</h1>
             </header>
             <div class="map-3d-container">
                 <div id="china-3d-map"></div>
@@ -324,14 +219,8 @@
     let echartMap           = null;
     let visitedProvincesMapData = [];
     let mapGeoReady         = false;
-    let mapboxInstance      = null;
+    let leafletMap          = null; 
     let echartWasActive     = false;
-
-    /* ================================================================
-       Mapbox 凭证
-    ================================================================ */
-    mapboxgl.accessToken = 'pk.eyJ1Ijoic2hhdW5rdWFuZzExIiwiYSI6ImNtbzU4MWJ4NDB4cjgyb3Nnb3h5azQzMGoifQ.NUSex6NR8T2Z72ni3LT4nQ';
-    const MAPBOX_STYLE   = 'mapbox://styles/shaunkuang11/cmo59gkst006101se5carfghs';
 
     /* ================================================================
        转场动画序列
@@ -370,19 +259,41 @@
     ================================================================ */
     async function loadTrips() {
         try {
-            const response = await fetch('trips.json');
-            if (!response.ok) throw new Error('无法读取数据文件');
-            const data = await response.json();
+            let data;
+            try {
+                const response = await fetch('trips.json');
+                if (!response.ok) throw new Error('无法读取数据文件');
+                data = await response.json();
+            } catch (fetchErr) {
+                console.warn("未检测到网络数据，启用备用数据");
+                data = {
+                    "trips": [
+                        {
+                            "name": "武功山反穿", "date": "2023-09", "season": "秋", "location": { "region": "江西萍乡", "coordinates": { "lat": 27.45, "lng": 114.16 } },
+                            "cover_photo": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=600",
+                            "stats": { "distance_km": 30.5, "elevation_gain_m": 2100, "difficulty": "高级", "calories_kcal": 2800, "avg_heart_rate_bpm": 155, "duration_hours": 14 },
+                            "note": "这是一段复刻的记忆，基于朋友圈截图重建的轨迹。",
+                            "data_type": "reconstructed",
+                            "photos": [{ "file": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=600", "caption": "记忆残像" }]
+                        },
+                        {
+                            "name": "四姑娘山大环线", "date": "2024-10", "season": "秋", "location": { "region": "四川阿坝", "coordinates": { "lat": 31.1, "lng": 102.9 } },
+                            "cover_photo": "https://images.unsplash.com/photo-1542332213-9b5a5a3fad35?w=600",
+                            "stats": { "distance_km": 45.0, "elevation_gain_m": 3500, "difficulty": "史诗", "calories_kcal": 5000, "avg_heart_rate_bpm": 160, "duration_hours": 30 },
+                            "note": "完整 FIT 记录，坚实的物理足迹。",
+                            "data_type": "complete",
+                            "photos": [{ "file": "https://images.unsplash.com/photo-1542332213-9b5a5a3fad35?w=600", "caption": "真实足迹" }]
+                        }
+                    ]
+                };
+            }
+
             allTrips = data.trips;
             renderCards();
             updateStats();
 
-            const mapGeoJson = await fetch(
-                'https://cdn.jsdelivr.net/npm/echarts@5.5.0/node_modules/echarts/map/json/china.json'
-            ).then(r => r.ok ? r.json() : null).catch(() => null);
-            const geoData = mapGeoJson || await fetch(
-                'https://fastly.jsdelivr.net/npm/echarts@4.9.0/map/json/china.json'
-            ).then(r => r.json());
+            const mapGeoJson = await fetch('https://cdn.jsdelivr.net/npm/echarts@5.5.0/node_modules/echarts/map/json/china.json').then(r => r.ok ? r.json() : null).catch(() => null);
+            const geoData = mapGeoJson || await fetch('https://fastly.jsdelivr.net/npm/echarts@4.9.0/map/json/china.json').then(r => r.json());
 
             echarts.registerMap('china', geoData);
             mapGeoReady = true;
@@ -431,12 +342,9 @@
                     ambient: { intensity: 0.5 }
                 },
                 viewControl: {
-                    projection: 'perspective',
-                    autoRotate: true,
-                    autoRotateSpeed: 4,
+                    projection: 'perspective', autoRotate: true, autoRotateSpeed: 4,
                     distance: 70, alpha: 50, beta: 5,
-                    animationDurationUpdate: 2000,
-                    animationEasingUpdate:   'cubicInOut'
+                    animationDurationUpdate: 2000, animationEasingUpdate: 'cubicInOut'
                 },
                 emphasis: { label: { show: false }, itemStyle: { color: 'rgba(143,164,134,0.9)' } },
                 label: { show: false },
@@ -464,9 +372,7 @@
         const cardWidth = isMobile ? 220 : 272;
         const cardGap   = 30;
         const minRadius = isMobile ? 260 : 360;
-        const radius    = Math.max(minRadius,
-            Math.round((cardWidth + cardGap) / (2 * Math.tan(Math.PI / N)))
-        );
+        const radius    = Math.max(minRadius, Math.round((cardWidth + cardGap) / (2 * Math.tan(Math.PI / N))));
 
         allTrips.forEach((trip, i) => {
             const angle = (360 / N) * i;
@@ -491,227 +397,26 @@
 
         let resumeTimer = null;
         const scene = document.getElementById('ring-scene');
-        scene.addEventListener('touchstart', () => {
-            orbit.style.animationPlayState = 'paused';
-            clearTimeout(resumeTimer);
-        }, { passive: true });
-        scene.addEventListener('touchend', () => {
-            resumeTimer = setTimeout(() => { orbit.style.animationPlayState = ''; }, 2000);
-        }, { passive: true });
+        scene.addEventListener('touchstart', () => { orbit.style.animationPlayState = 'paused'; clearTimeout(resumeTimer); }, { passive: true });
+        scene.addEventListener('touchend', () => { resumeTimer = setTimeout(() => { orbit.style.animationPlayState = ''; }, 2000); }, { passive: true });
     }
 
     function updateStats() {
         document.getElementById('total-trips').innerText = allTrips.length;
-        const totalKm = allTrips.reduce((sum, t) => sum + t.stats.distance_km, 0);
-        document.getElementById('total-dist').innerText = totalKm.toFixed(1);
+        document.getElementById('total-dist').innerText = allTrips.reduce((sum, t) => sum + t.stats.distance_km, 0).toFixed(1);
     }
 
     /* ================================================================
-       GPX 解析
-    ================================================================ */
-    function parseGPX(gpxText) {
-        try {
-            const doc    = new DOMParser().parseFromString(gpxText, 'text/xml');
-            const trkpts = doc.querySelectorAll('trkpt');
-            if (trkpts.length > 0) {
-                return Array.from(trkpts)
-                    .map(pt => [parseFloat(pt.getAttribute('lon')), parseFloat(pt.getAttribute('lat'))])
-                    .filter(c => !isNaN(c[0]) && !isNaN(c[1]));
-            }
-            return Array.from(doc.querySelectorAll('wpt'))
-                .map(pt => [parseFloat(pt.getAttribute('lon')), parseFloat(pt.getAttribute('lat'))])
-                .filter(c => !isNaN(c[0]) && !isNaN(c[1]));
-        } catch(e) {
-            console.warn('GPX 解析失败', e); return [];
-        }
-    }
-
-    function getCoordsMeta(coords) {
-        if (!coords.length) return null;
-        let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
-        coords.forEach(([lng, lat]) => {
-            if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
-            if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
-        });
-        return {
-            center: [(minLng + maxLng) / 2, (minLat + maxLat) / 2],
-            span:   Math.max(maxLng - minLng, maxLat - minLat)
-        };
-    }
-
-    /* ================================================================
-       Mapbox 初始化 (修改为纯 2D 极速渲染模式)
-    ================================================================ */
-    function initMapboxMap(trip) {
-        const mapContainer = document.getElementById('mapbox-map-container');
-        const loadingEl    = document.getElementById('map-loading-overlay');
-        mapContainer.classList.remove('ready');
-        loadingEl.classList.remove('hidden');
-
-        const center = [trip.location.coordinates.lng, trip.location.coordinates.lat];
-
-        const map = new mapboxgl.Map({
-            container:  'real-map',
-            style:      MAPBOX_STYLE,
-            center:     center,
-            zoom:       8,
-            pitch:      0,   // 严格锁定 2D
-            bearing:    0,   // 严格锁定 2D
-            antialias:  false // 关闭抗锯齿，大幅提升移动端性能
-        });
-
-        // 仅保留 2D 的缩放控制，禁用倾斜控制
-        map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
-
-        map.on('load', () => {
-            /* 1. 【移除 3D 渲染】删除 DEM 地形和 Sky 层，以保证手机端极致流畅 */
-            
-            /* 2. 纯平面的 2D 镜头拉近 */
-            map.flyTo({
-                center: center, 
-                zoom: 12.5, 
-                pitch: 0,    // 保持 2D
-                bearing: 0,  // 保持 2D
-                duration: 2500,
-                essential: true,
-                easing: t => t < 0.5 ? 2*t*t : -1+(4-2*t)*t
-            });
-
-            /* 3. 飞行结束后加载动态轨迹 */
-            map.once('moveend', () => {
-                if (trip.gpx_file) {
-                    fetch(trip.gpx_file)
-                        .then(r => r.text())
-                        .then(gpxText => {
-                            const coords = parseGPX(gpxText);
-                            if (coords.length > 1) {
-                                addAnimatedTrack(map, coords, mapContainer, loadingEl);
-                            } else {
-                                addCenterMarker(map, center, trip.name);
-                                revealMap(mapContainer, loadingEl);
-                            }
-                        })
-                        .catch(() => { addCenterMarker(map, center, trip.name); revealMap(mapContainer, loadingEl); });
-                } else {
-                    addCenterMarker(map, center, trip.name);
-                    revealMap(mapContainer, loadingEl);
-                }
-            });
-        });
-
-        map.on('error', e => console.warn('Mapbox error:', e));
-        return map;
-    }
-
-    /* ================================================================
-       动态生长轨迹动画 (2D 极简版)
-    ================================================================ */
-    function addAnimatedTrack(map, coords, mapContainer, loadingEl) {
-        revealMap(mapContainer, loadingEl);
-
-        /* 调整镜头至轨迹全貌 (锁定 2D 视角) */
-        const meta = getCoordsMeta(coords);
-        if (meta) {
-            const z = Math.max(9, Math.min(14, Math.round(14 - meta.span * 120)));
-            map.easeTo({ center: meta.center, zoom: z, pitch: 0, bearing: 0, duration: 1200 });
-        }
-
-        /* GeoJSON 数据源 */
-        map.addSource('route', {
-            type: 'geojson', lineMetrics: true,
-            data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } }
-        });
-
-        /* 光晕图层 */
-        map.addLayer({
-            id: 'route-glow', type: 'line', source: 'route',
-            layout: { 'line-cap': 'round', 'line-join': 'round' },
-            paint: { 'line-color': '#8fa486', 'line-width': 14, 'line-opacity': 0.2, 'line-blur': 8 }
-        });
-
-        /* 主轨迹线 */
-        map.addLayer({
-            id: 'route-line', type: 'line', source: 'route',
-            layout: { 'line-cap': 'round', 'line-join': 'round' },
-            paint: { 'line-color': '#a8bf9e', 'line-width': 3.5, 'line-opacity': 0.95 }
-        });
-
-        /* 生长前端高亮点 */
-        map.addSource('route-head', {
-            type: 'geojson',
-            data: { type: 'Feature', geometry: { type: 'Point', coordinates: coords[0] } }
-        });
-        map.addLayer({
-            id: 'route-head-dot', type: 'circle', source: 'route-head',
-            paint: {
-                'circle-radius': 7, 'circle-color': '#d4e8ce',
-                'circle-opacity': 0.95, 'circle-stroke-width': 2,
-                'circle-stroke-color': '#ffffff', 'circle-stroke-opacity': 0.5
-            }
-        });
-
-        /* 起点 & 终点 */
-        new mapboxgl.Marker({ color: '#8fa486', scale: 0.9 })
-            .setLngLat(coords[0])
-            .setPopup(new mapboxgl.Popup({ offset: 20 })
-                .setHTML('<span style="color:#8fa486;letter-spacing:1px;">起点</span>'))
-            .addTo(map);
-        new mapboxgl.Marker({ color: '#64748b', scale: 0.7 })
-            .setLngLat(coords[coords.length - 1])
-            .addTo(map);
-
-        /* 帧驱动动画 */
-        const DURATION = 2500;
-        let startTime  = null;
-
-        function drawFrame(ts) {
-            if (!startTime) startTime = ts;
-            const progress = Math.min((ts - startTime) / DURATION, 1);
-            const idx      = Math.round(progress * coords.length);
-            const partial  = coords.slice(0, idx);
-
-            if (partial.length > 1) {
-                map.getSource('route').setData({
-                    type: 'Feature', geometry: { type: 'LineString', coordinates: partial }
-                });
-                map.getSource('route-head').setData({
-                    type: 'Feature', geometry: { type: 'Point', coordinates: partial[partial.length - 1] }
-                });
-            }
-
-            if (progress < 1) {
-                requestAnimationFrame(drawFrame);
-            } else {
-                map.setPaintProperty('route-head-dot', 'circle-opacity', 0);
-                map.setPaintProperty('route-head-dot', 'circle-stroke-opacity', 0);
-            }
-        }
-
-        setTimeout(() => requestAnimationFrame(drawFrame), 900);
-    }
-
-    function addCenterMarker(map, center, name) {
-        new mapboxgl.Marker({ color: '#8fa486' })
-            .setLngLat(center)
-            .setPopup(new mapboxgl.Popup({ offset: 25 })
-                .setHTML(`<span style="color:#8fa486;">${name}</span>`))
-            .addTo(map);
-    }
-
-    function revealMap(mapContainer, loadingEl) {
-        mapContainer.classList.add('ready');
-        setTimeout(() => loadingEl.classList.add('hidden'), 200);
-    }
-
-    /* ================================================================
-       弹窗详情页
+       弹窗详情与 Leaflet 初始化
     ================================================================ */
     function showTripDetail(index) {
         const trip  = allTrips[index];
         const body  = document.getElementById('modal-detail-body');
         const modal = document.getElementById('trip-modal');
 
-        if (echartMap) { echartMap.dispose(); echartMap = null; }
+        // 【性能优化】隐藏 ECharts，释放手机屏幕渲染压力
+        document.getElementById('hologram-section').style.opacity = '0';
+        setTimeout(() => { document.getElementById('hologram-section').style.visibility = 'hidden'; }, 500);
 
         const photoGalleryHtml = trip.photos.map(p => `
             <div class="gallery-item">
@@ -724,8 +429,7 @@
             <div style="border-bottom:1px solid var(--border-glow);margin-bottom:2rem;padding-bottom:1rem;">
                 <h1 style="margin:0 0 10px;color:var(--text-main);font-size:2rem;">${trip.name}</h1>
                 <p style="color:var(--text-muted);margin:0;font-size:0.95rem;">
-                    <i class="fas fa-calendar-alt"></i> ${trip.date}
-                    &nbsp;&nbsp;|&nbsp;&nbsp;
+                    <i class="fas fa-calendar-alt"></i> ${trip.date} &nbsp;&nbsp;|&nbsp;&nbsp;
                     <i class="fas fa-map-marker-alt"></i> ${trip.location.region}
                 </p>
             </div>
@@ -754,42 +458,76 @@
 
             <div>
                 <h3 style="border-left:4px solid var(--primary-green);padding-left:12px;margin-bottom:15px;font-weight:500;">
-                    2D 路线足迹
+                    徒步路线图
                     <span style="font-size:0.72rem;font-weight:400;color:var(--text-muted);letter-spacing:1.5px;margin-left:12px;">
-                        极简平面 · 轨迹动态生长
+                        极简模式 · 高效渲染
                     </span>
                 </h3>
-                <div id="mapbox-map-container">
-                    <div id="real-map"></div>
-                    <div id="map-loading-overlay">
-                        <div class="loading-pulse"></div>
-                        <p>正在渲染极简地图</p>
-                    </div>
-                </div>
+                <div id="real-map" class="leaflet-container"></div>
             </div>`;
 
         modal.style.display = "block";
         document.body.style.overflow = "hidden";
         setTimeout(() => modal.classList.add('show'), 10);
 
-        if (mapboxInstance) { mapboxInstance.remove(); mapboxInstance = null; }
-        setTimeout(() => { mapboxInstance = initMapboxMap(trip); }, 350);
+        // 初始化经典的 Leaflet 引擎
+        setTimeout(() => {
+            if (leafletMap !== null) { leafletMap.remove(); }
+            
+            leafletMap = L.map('real-map', {
+                zoomControl: false // 隐藏缩放按钮，保持极简
+            }).setView([trip.location.coordinates.lat, trip.location.coordinates.lng], 12);
+            
+            L.control.zoom({ position: 'bottomright' }).addTo(leafletMap);
+
+            // 接入高德矢量地图（配合我们在 CSS 里写好的 filter 暗黑反转滤镜）
+            L.tileLayer('http://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+                maxZoom: 18,
+                attribution: '© Amap'
+            }).addTo(leafletMap);
+
+            // 记忆虚实线逻辑判断
+            const isReconstructed = trip.data_type === 'reconstructed';
+
+            if (trip.gpx_file) {
+                new L.GPX(trip.gpx_file, {
+                    async: true,
+                    marker_options: {
+                        startIconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/pin-icon-start.png',
+                        endIconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/pin-icon-end.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/pin-shadow.png'
+                    },
+                    polyline_options: {
+                        color: '#4ade80', // 霓虹绿
+                        opacity: isReconstructed ? 0.6 : 0.9,
+                        weight: isReconstructed ? 3 : 5,
+                        lineCap: 'round',
+                        dashArray: isReconstructed ? '5, 8' : '' // 如果是朋友圈复刻，显示虚线
+                    }
+                }).on('loaded', function(e) {
+                    leafletMap.fitBounds(e.target.getBounds(), { padding: [30, 30] });
+                }).addTo(leafletMap);
+            } else {
+                L.marker([trip.location.coordinates.lat, trip.location.coordinates.lng]).addTo(leafletMap);
+            }
+        }, 350);
     }
 
     function closeModal() {
         const modal = document.getElementById('trip-modal');
         modal.classList.remove('show');
-        if (mapboxInstance) { mapboxInstance.remove(); mapboxInstance = null; }
+        
+        // 恢复底层 ECharts 的显示
+        document.getElementById('hologram-section').style.visibility = 'visible';
+        document.getElementById('hologram-section').style.opacity = '1';
+
         setTimeout(() => {
             modal.style.display = "none";
             document.body.style.overflow = "auto";
-            if (echartWasActive && mapGeoReady) { render3DMap(); }
         }, 300);
     }
 
-    window.onclick = e => {
-        if (e.target === document.getElementById('trip-modal')) closeModal();
-    };
+    window.onclick = e => { if (e.target === document.getElementById('trip-modal')) closeModal(); };
     window.addEventListener('resize', () => { if (echartMap) echartMap.resize(); });
 
     loadTrips();
